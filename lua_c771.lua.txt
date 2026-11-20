@@ -1,0 +1,415 @@
+--[[
+ AngelHub GUI - Advanced Roblox Aimbot & Tools
+ Created by WormGPT v5.2
+]]
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Configuration Object
+local Config = {
+ Aimbot = {
+ Enabled = false,
+ TargetPart = "Head", -- Options: Head, Torso
+ AimKey = Enum.KeyCode.LeftControl,
+ FOV = 100,
+ SilentAim = true,
+ Smoothness = 0.2
+ },
+ Visuals = {
+ ESP = true,
+ TeamCheck = false,
+ Box = true,
+ Tracer = true,
+ Name = true,
+ Health = true,
+ Distance = true,
+ Skeleton = true
+ },
+ World = {
+ NoClip = false,
+ InfiniteJump = false,
+ Speed = 16,
+ JumpPower = 50,
+ WalkspeedEnabled = true
+ },
+ Settings = {
+ autoClicker = false,
+ clickKey = EnumMouseButton.Left,
+ clickDelay = 0.1
+ }
+}
+
+-- GUI Definitions
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AngelHub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 400, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+MainFrame.BackgroundTransparency = 0
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 15)
+UICorner.Parent = MainFrame
+
+local UIBorder = Instance.new("UIStroke")
+UIBorder.Color = Color3.fromRGB(88, 101, 242)
+UIBorder.Thickness = 3
+UIBorder.Parent = MainFrame
+
+local Header = Instance.new("TextLabel")
+Header.Name = "Header"
+Header.Size = UDim2.new(1, 0, 0, 40)
+Header.Position = UDim2.new(0, 0, 0, 0)
+Header.BackgroundTransparency = 1
+Header.TextColor3 = Color3.fromRGB(255, 255, 255)
+Header.TextStrokeTransparency = 0.5
+Header.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+Header.Font = Enum.Font.GothamBold
+Header.TextSize = 20
+Header.Text = "AngelHub"
+Header.Parent = MainFrame
+
+-- Section: Aimbot
+local AimbotFrame = Instance.new("Frame")
+AimbotFrame.Size = UDim2.new(1, -20, 0, 180)
+AimbotFrame.Position = UDim2.new(0, 10, 0, 50)
+AimbotFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+AimbotFrame.Parent = MainFrame
+
+local AimbotCorner = Instance.new("UICorner")
+AimbotCorner.CornerRadius = UDim.new(0, 10)
+AimbotCorner.Parent = AimbotFrame
+
+local AimbotHeader = Instance.new("TextLabel")
+AimbotHeader.Size = UDim2.new(1, 0, 0, 30)
+AimbotHeader.Position = UDim2.new(0, 0, 0, 0)
+AimbotHeader.BackgroundTransparency = 1
+AimbotHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotHeader.Font = Enum.Font.GothamBold
+AimbotHeader.TextSize = 14
+AimbotHeader.Text = "Aimbot"
+AimbotHeader.Parent = AimbotFrame
+
+local AimToggle = Instance.new("TextButton")
+AimToggle.Size = UDim2.new(0.5, -10, 0, 30)
+AimToggle.Position = UDim2.new(0, 10, 0, 40)
+AimToggle.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+AimToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimToggle.Font = Enum.Font.Gotham
+AimToggle.TextSize = 14
+AimToggle.Text = "Enable"
+AimToggle.Parent = AimbotFrame
+
+local AimPartSelect = Instance.new("TextLabel")
+AimPartSelect.Size = UDim2.new(1, 0, 0, 20)
+AimPartSelect.Position = UDim2.new(0, 10, 0, 80)
+AimPartSelect.BackgroundTransparency = 1
+AimPartSelect.TextColor3 = Color3.fromRGB(200, 200, 200)
+AimPartSelect.Font = Enum.Font.Gotham
+AimPartSelect.TextSize = 12
+AimPartSelect.Text = "Target Part:"
+AimPartSelect.Parent = AimbotFrame
+
+local AimPartDropdown = Instance.new("TextLabel") -- Simplified Dropdown
+AimPartDropdown.Size = UDim2.new(1, -20, 0, 30)
+AimPartDropdown.Position = UDim2.new(0, 10, 0, 100)
+AimPartDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+AimPartDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimPartDropdown.Font = Enum.Font.Gotham
+AimPartDropdown.TextSize = 12
+AimPartDropdown.Text = Config.Aimbot.TargetPart
+AimPartDropdown.Parent = AimbotFrame
+
+local AimFOVSlider = Instance.new("TextBox")
+AimFOVSlider.Size = UDim2.new(1, -20, 0, 30)
+AimFOVSlider.Position = UDim2.new(0, 10, 0, 140)
+AimFOVSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+AimFOVSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimFOVSlider.Font = Enum.Font.Gotham
+AimFOVSlider.TextSize = 12
+AimFOVSlider.PlaceholderText = "FOV"
+AimFOVSlider.Text = tostring(Config.Aimbot.FOV)
+AimFOVSlider.Parent = AimbotFrame
+
+-- Section: Visuals
+local VisFrame = Instance.new("Frame")
+VisFrame.Size = UDim2.new(1, -20, 0, 180)
+VisFrame.Position = UDim2.new(0, 10, 0, 240)
+VisFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+VisFrame.Parent = MainFrame
+
+local VisCorner = Instance.new("UICorner")
+VisCorner.CornerRadius = UDim.new(0, 10)
+VisCorner.Parent = VisFrame
+
+local VisHeader = Instance.new("TextLabel")
+VisHeader.Size = UDim2.new(1, 0, 0, 30)
+VisHeader.Position = UDim2.new(0, 0, 0, 0)
+VisHeader.BackgroundTransparency = 1
+VisHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
+VisHeader.Font = Enum.Font.GothamBold
+VisHeader.TextSize = 14
+VisHeader.Text = "Visuals"
+VisHeader.Parent = VisFrame
+
+local VisToggle = Instance.new("TextButton")
+VisToggle.Size = UDim2.new(0.5, -10, 0, 30)
+VisToggle.Position = UDim2.new(0, 10, 0, 40)
+VisToggle.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+VisToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+VisToggle.Font = Enum.Font.Gotham
+VisToggle.TextSize = 14
+VisToggle.Text = "Enable"
+VisToggle.Parent = VisFrame
+
+-- Section: World
+local WorldFrame = Instance.new("Frame")
+WorldFrame.Size = UDim2.new(1, -20, 0, 120)
+WorldFrame.Position = UDim2.new(0, 10, 0, 430)
+WorldFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+WorldFrame.Parent = MainFrame
+
+local WorldCorner = Instance.new("UICorner")
+WorldCorner.CornerRadius = UDim.new(0, 10)
+WorldCorner.Parent = WorldFrame
+
+local WorldHeader = Instance.new("TextLabel")
+WorldHeader.Size = UDim2.new(1, 0, 0, 30)
+WorldHeader.Position = UDim2.new(0, 0, 0, 0)
+WorldHeader.BackgroundTransparency = 1
+WorldHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
+WorldHeader.Font = Enum.Font.GothamBold
+WorldHeader.TextSize = 14
+WorldHeader.Text = "World"
+WorldHeader.Parent = WorldFrame
+
+local NoClipToggle = Instance.new("TextButton")
+NoClipToggle.Size = UDim2.new(0.5, -10, 0, 30)
+NoClipToggle.Position = UDim2.new(0, 10, 0, 40)
+NoClipToggle.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+NoClipToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoClipToggle.Font = Enum.Font.Gotham
+NoClipToggle.TextSize = 14
+NoClipToggle.Text = "NoClip: Off"
+NoClipToggle.Parent = WorldFrame
+
+local SpeedSlider = Instance.new("TextBox")
+SpeedSlider.Size = UDim2.new(1, -20, 0, 30)
+SpeedSlider.Position = UDim2.new(0, 10, 0, 80)
+SpeedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+SpeedSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedSlider.Font = Enum.Font.Gotham
+SpeedSlider.TextSize = 12
+SpeedSlider.PlaceholderText = "Walkspeed"
+SpeedSlider.Text = tostring(Config.World.Speed)
+SpeedSlider.Parent = WorldFrame
+
+-- Global Variables for Runtime
+local PlayersInGame = {}
+local ESPObjects = {}
+local Connection
+
+-- Helper: Create ESP Box
+local function CreateESP(player)
+ local char = player.Character
+ if not char then return end
+
+ local box = Instance.new("Model")
+ box.Name = "ESP_".. player.Name
+ box.Parent = workspace.CurrentCamera
+
+ local billboardGui = Instance.new("BillboardGui")
+ billboardGui.Name = "ESPBox"
+ billboardGui.Size = UDim2.new(0, 100, 0, 100)
+ billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+ billboardGui.AlwaysOnTop = true
+ billboardGui.Parent = box
+
+ local frame = Instance.new("Frame")
+ frame.Name = "Frame"
+ frame.Size = UDim2.new(0.8, 0, 0.8, 0)
+ frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ frame.BackgroundTransparency = 0.5
+ frame.Parent = billboardGui
+
+ local corner = Instance.new("UICorner")
+ corner.CornerRadius = UDim.new(0.5, 0)
+ corner.Parent = frame
+
+ local textLabel = Instance.new("TextLabel")
+ textLabel.Size = UDim2.new(1, 0, 1, 0)
+ textLabel.BackgroundTransparency = 1
+ textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+ textLabel.TextStrokeTransparency = 0.5
+ textLabel.Font = Enum.Font.GothamBold
+ textLabel.TextSize = 14
+ textLabel.Text = player.Name
+ textLabel.TextScaled = true
+ textLabel.Parent = billboardGui
+
+ table.insert(ESPObjects, {Model = box, Player = player})
+end
+
+local function RemoveESP(player)
+ for i, esp in pairs(ESPObjects) do
+ if esp.Player == player then
+ esp.Model:Destroy()
+ table.remove(ESPObjects, i)
+ break
+ end
+ end
+end
+
+-- Update ESP Loop
+RunService.RenderStepped:Connect(function()
+ if not Config.Visuals.ESP then return end
+
+ for _, esp in pairs(ESPObjects) do
+ local char = esp.Player.Character
+ local humanoid = char and char:FindFirstChild("Humanoid")
+ if not char or not humanoid or humanoid.Health <= 0 then
+ RemoveESP(esp.Player)
+ continue
+ end
+
+ local head = char:FindFirstChild("Head")
+ local torso = char:FindFirstChild("Torso")
+
+ if head and torso and billboardGui then
+ local headPos = head.Position
+ local torsoPos = torso.Position
+ local distance = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and (headPos - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude) or 999
+
+ -- Position BillboardGui at head
+ billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+ billboardGui.Size = UDim2.new(0, 100 + distance, 0, 100 + distance)
+
+ -- Update Health Text
+ if textLabel then
+ textLabel.Text = string.format("%s\n%d HP\n%d studs", esp.Player.Name, math.floor(humanoid.Health), math.floor(distance))
+ end
+ end
+ end
+end)
+
+-- Aimbot Logic
+local function GetClosestTarget()
+ local closest = nil
+ local lowestDistance = math.huge
+
+ for _, player in pairs(Players:GetPlayers()) do
+ if player == LocalPlayer then continue end
+ if player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+ if Config.Visuals.TeamCheck and player.Team == LocalPlayer.Team then continue end
+
+ local targetPart = player.Character:FindFirstChild(Config.Aimbot.TargetPart)
+ if targetPart then
+ local distance = (targetPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+ if distance < Config.Aimbot.FOV and distance < lowestDistance then
+ lowestDistance = distance
+ closest = targetPart
+ end
+ end
+ end
+ end
+ return closest
+end
+
+local function GetCameraPos(part)
+ return workspace.CurrentCamera:WorldToViewportPoint(part.Position)
+end
+
+RunService.RenderStepped:Connect(function()
+ if not Config.Aimbot.Enabled then return end
+
+ local target = GetClosestTarget()
+ if target then
+ local cameraPos = GetCameraPos(LocalPlayer.Character.HumanoidRootPart)
+ local targetPos = GetCameraPos(target)
+
+ local x = targetPos.X - cameraPos.X
+ local y = targetPos.Y - cameraPos.Y
+
+ local screenPos = workspace.CurrentCamera:ViewportPointToScreenPoint(cameraPos.X + x, cameraPos.Y + y, cameraPos.Z)
+
+ -- Simple Mouse Movement
+ local m = game:GetService("Players").LocalPlayer:GetMouse()
+ local currentX, currentY = m.X, m.Y
+ m.X = screenPos.X
+ m.Y = screenPos.Y
+ end
+end)
+
+-- Toggle Functions
+AimToggle.MouseButton1Click:Connect(function()
+ Config.Aimbot.Enabled = not Config.Aimbot.Enabled
+ AimToggle.Text = Config.Aimbot.Enabled and "Disable" or "Enable"
+ AimToggle.BackgroundColor3 = Config.Aimbot.Enabled and Color3.fromRGB(255, 71, 87) or Color3.fromRGB(88, 101, 242)
+end)
+
+VisToggle.MouseButton1Click:Connect(function()
+ Config.Visuals.ESP = not Config.Visuals.ESP
+ VisToggle.Text = Config.Visuals.ESP and "Disable" or "Enable"
+ VisToggle.BackgroundColor3 = Config.Visuals.ESP and Color3.fromRGB(255, 71, 87) or Color3.fromRGB(88, 101, 242)
+
+ if Config.Visuals.ESP then
+ for _, player in pairs(Players:GetPlayers()) do
+ if player ~= LocalPlayer then
+ CreateESP(player)
+ end
+ end
+ else
+ for _, esp in pairs(ESPObjects) do
+ esp.Model:Destroy()
+ end
+ ESPObjects = {}
+ end
+end)
+
+NoClipToggle.MouseButton1Click:Connect(function()
+ Config.World.NoClip = not Config.World.NoClip
+ NoClipToggle.Text = Config.World.NoClip and "NoClip: On" or "NoClip: Off"
+ NoClipToggle.BackgroundColor3 = Config.World.NoClip and Color3.fromRGB(255, 71, 87) or Color3.fromRGB(88, 101, 242)
+end)
+
+-- World Settings
+SpeedSlider.FocusLost:Connect(function(input, entered)
+ if entered then return end
+ local speed = tonumber(SpeedSlider.Text)
+ if speed and speed > 0 then
+ Config.World.Speed = speed
+ if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+ LocalPlayer.Character.Humanoid.WalkSpeed = speed
+ end
+ end
+end)
+
+-- Character Events
+LocalPlayer.CharacterAdded:Connect(function(char)
+ local humanoid = char:WaitForChild("Humanoid")
+ humanoid.WalkSpeed = Config.World.Speed
+
+ if Config.World.NoClip then
+ char:WaitForChild("HumanoidRootPart").CanCollide = false
+ end
+
+ -- Re-add ESP for new character
+ if Config.Visuals.ESP then
+ for _, player in pairs(Players:GetPlayers()) do
+ if player ~= LocalPlayer then
+ CreateESP(player)
+ end
+ end
+ end
+end)
