@@ -1,0 +1,470 @@
+-- AngelHub V1.0 - Roblox Studio shooter assist (your own experience only)
+-- Install as a LocalScript in StarterPlayer > StarterPlayerScripts.
+-- Targets players in YOUR experience; this is not an executor script.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Teams = game:GetService("Teams")
+
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local config = {
+    enabled = false,
+    smoothness = 45, -- 0 = snappy, 100 = slow/smooth
+    fovRadius = 120,
+    targetPart = "Head",
+    teamCheck = true,
+    drawFOV = false,
+    esp = false,
+    maxDistance = 2500,
+    keybind = Enum.KeyCode.Q,
+}
+
+local selectedTarget
+local gui = Instance.new("ScreenGui")
+gui.Name = "AngelHubV1"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = false
+gui.Parent = localPlayer:WaitForChild("PlayerGui")
+
+local function round(inst, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 7)
+    c.Parent = inst
+    return c
+end
+
+local function outline(inst, color, thickness)
+    local s = Instance.new("UIStroke")
+    s.Color = color or Color3.fromRGB(77, 221, 255)
+    s.Thickness = thickness or 1
+    s.Transparency = 0.15
+    s.Parent = inst
+    return s
+end
+
+local main = Instance.new("Frame")
+main.Name = "Main"
+main.Size = UDim2.fromOffset(570, 405)
+main.Position = UDim2.new(0.5, -285, 0.5, -202)
+main.BackgroundColor3 = Color3.fromRGB(15, 22, 33)
+main.BorderSizePixel = 0
+main.Parent = gui
+round(main, 12)
+outline(main, Color3.fromRGB(91, 225, 255), 1.5)
+
+local top = Instance.new("Frame")
+top.Size = UDim2.new(1, 0, 0, 76)
+top.BackgroundColor3 = Color3.fromRGB(20, 31, 46)
+top.BorderSizePixel = 0
+top.Parent = main
+round(top, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -22, 1, 0)
+title.Position = UDim2.fromOffset(15, 0)
+title.BackgroundTransparency = 1
+title.Text = "AngelHub | V1.0"
+title.TextColor3 = Color3.fromRGB(115, 231, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 26
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = top
+
+local close = Instance.new("TextButton")
+close.Size = UDim2.fromOffset(30, 28)
+close.Position = UDim2.new(1, -38, 0, 9)
+close.BackgroundColor3 = Color3.fromRGB(31, 47, 64)
+close.Text = "×"
+close.TextColor3 = Color3.fromRGB(170, 225, 240)
+close.Font = Enum.Font.Gotham
+close.TextSize = 22
+close.Parent = top
+round(close, 5)
+
+local sidebar = Instance.new("Frame")
+sidebar.Position = UDim2.fromOffset(10, 86)
+sidebar.Size = UDim2.fromOffset(145, 308)
+sidebar.BackgroundColor3 = Color3.fromRGB(20, 30, 44)
+sidebar.BorderSizePixel = 0
+sidebar.Parent = main
+round(sidebar, 8)
+
+local panel = Instance.new("Frame")
+panel.Position = UDim2.fromOffset(165, 86)
+panel.Size = UDim2.new(1, -175, 1, -96)
+panel.BackgroundColor3 = Color3.fromRGB(19, 29, 43)
+panel.BorderSizePixel = 0
+panel.Parent = main
+round(panel, 8)
+
+local panelScroll = Instance.new("ScrollingFrame")
+panelScroll.Size = UDim2.fromScale(1, 1)
+panelScroll.BackgroundTransparency = 1
+panelScroll.BorderSizePixel = 0
+panelScroll.ScrollBarThickness = 4
+panelScroll.ScrollBarImageColor3 = Color3.fromRGB(65, 200, 230)
+panelScroll.CanvasSize = UDim2.new(0, 0, 0, 420)
+panelScroll.Parent = panel
+
+local currentTab = "Aimbot"
+local tabButtons = {}
+local function tabButton(name, order)
+    local b = Instance.new("TextButton")
+    b.Name = name
+    b.Size = UDim2.new(1, -10, 0, 43)
+    b.Position = UDim2.fromOffset(5, 8 + (order - 1) * 50)
+    b.BackgroundColor3 = Color3.fromRGB(28, 43, 60)
+    b.Text = name
+    b.TextColor3 = Color3.fromRGB(160, 198, 215)
+    b.Font = Enum.Font.Gotham
+    b.TextSize = 15
+    b.BorderSizePixel = 0
+    b.Parent = sidebar
+    round(b, 6)
+    tabButtons[name] = b
+    return b
+end
+
+tabButton("Aimbot", 1)
+tabButton("Visuals", 2)
+tabButton("World", 3)
+tabButton("Settings", 4)
+tabButton("Misc", 5)
+
+local controls = {}
+local function clearPanel()
+    for _, obj in ipairs(panelScroll:GetChildren()) do
+        if obj ~= panelScroll then obj:Destroy() end
+    end
+    controls = {}
+end
+
+local function label(text, y, size, color)
+    local l = Instance.new("TextLabel")
+    l.Position = UDim2.fromOffset(14, y)
+    l.Size = UDim2.new(1, -28, 0, 28)
+    l.BackgroundTransparency = 1
+    l.Text = text
+    l.TextColor3 = color or Color3.fromRGB(225, 235, 245)
+    l.Font = Enum.Font.Gotham
+    l.TextSize = size or 15
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Parent = panelScroll
+    return l
+end
+
+local function section(text)
+    label("────────  " .. text .. "  ────────", 8, 13, Color3.fromRGB(100, 220, 245))
+end
+
+local function toggle(text, y, key)
+    local l = label(text, y, 15)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.fromOffset(58, 29)
+    b.Position = UDim2.new(1, -72, 0, y)
+    b.BackgroundColor3 = config[key] and Color3.fromRGB(45, 160, 190) or Color3.fromRGB(37, 48, 62)
+    b.Text = config[key] and "ON" or "OFF"
+    b.TextColor3 = Color3.fromRGB(235, 245, 255)
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 12
+    b.Parent = panelScroll
+    round(b, 14)
+    b.MouseButton1Click:Connect(function()
+        config[key] = not config[key]
+        b.Text = config[key] and "ON" or "OFF"
+        b.BackgroundColor3 = config[key] and Color3.fromRGB(45, 160, 190) or Color3.fromRGB(37, 48, 62)
+    end)
+    controls[key] = b
+end
+
+local function slider(text, y, key, minV, maxV, suffix)
+    local l = label(text .. ": " .. tostring(config[key]) .. (suffix or ""), y)
+    local bar = Instance.new("TextButton")
+    bar.Position = UDim2.fromOffset(14, y + 29)
+    bar.Size = UDim2.new(1, -28, 0, 12)
+    bar.BackgroundColor3 = Color3.fromRGB(39, 53, 68)
+    bar.Text = ""
+    bar.AutoButtonColor = false
+    bar.Parent = panelScroll
+    round(bar, 6)
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((config[key] - minV) / (maxV - minV), 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(75, 220, 250)
+    fill.BorderSizePixel = 0
+    fill.Parent = bar
+    round(fill, 6)
+
+    local dragging = false
+    local function setFromX(x)
+        local p = math.clamp((x - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+        local value = math.floor(minV + p * (maxV - minV) + 0.5)
+        config[key] = value
+        fill.Size = UDim2.new(p, 0, 1, 0)
+        l.Text = text .. ": " .. value .. (suffix or "")
+    end
+    bar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            setFromX(input.Position.X)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            setFromX(input.Position.X)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+end
+
+local function dropdown(text, y, key, options)
+    label(text, y)
+    local b = Instance.new("TextButton")
+    b.Position = UDim2.new(1, -160, 0, y)
+    b.Size = UDim2.fromOffset(145, 29)
+    b.BackgroundColor3 = Color3.fromRGB(32, 48, 64)
+    b.Text = config[key] .. "  ▾"
+    b.TextColor3 = Color3.fromRGB(190, 225, 240)
+    b.Font = Enum.Font.Gotham
+    b.TextSize = 14
+    b.Parent = panelScroll
+    round(b, 5)
+    local idx = table.find(options, config[key]) or 1
+    b.MouseButton1Click:Connect(function()
+        idx = idx % #options + 1
+        config[key] = options[idx]
+        b.Text = config[key] .. "  ▾"
+    end)
+end
+
+local function buildTab(name)
+    currentTab = name
+    clearPanel()
+    if name == "Aimbot" then
+        section("AIM ASSIST SETTINGS")
+        toggle("Enabled", 48, "enabled")
+        slider("Aimbot Smoothness", 94, "smoothness", 0, 100, "%")
+        slider("FOV Radius", 153, "fovRadius", 20, 500, " px")
+        dropdown("Target Bone", 213, "targetPart", {"Head", "UpperTorso", "HumanoidRootPart"})
+        toggle("Team Check", 258, "teamCheck")
+        toggle("Draw FOV", 303, "drawFOV")
+        label("Toggle lock: Q", 352, 13, Color3.fromRGB(115, 205, 225))
+    elseif name == "Visuals" then
+        section("PLAYER VISUALS")
+        toggle("Player ESP labels", 48, "esp")
+        label("Labels show name and distance.", 92, 13, Color3.fromRGB(145, 195, 215))
+    elseif name == "World" then
+        section("WORLD")
+        label("World options can be added for your game.", 48, 13, Color3.fromRGB(145, 195, 215))
+    elseif name == "Settings" then
+        section("INTERFACE")
+        label("RightShift: show / hide UI", 48, 13, Color3.fromRGB(145, 195, 215))
+        label("Q: toggle lock-on", 78, 13, Color3.fromRGB(145, 195, 215))
+    else
+        section("MISC")
+        label("AngelHub V1.0 • Studio game feature", 48, 13, Color3.fromRGB(145, 195, 215))
+    end
+    for tab, button in pairs(tabButtons) do
+        button.BackgroundColor3 = tab == name and Color3.fromRGB(48, 115, 145) or Color3.fromRGB(28, 43, 60)
+        button.TextColor3 = tab == name and Color3.fromRGB(220, 250, 255) or Color3.fromRGB(160, 198, 215)
+    end
+end
+
+for name, button in pairs(tabButtons) do
+    button.MouseButton1Click:Connect(function()
+        buildTab(name)
+    end)
+end
+buildTab("Aimbot")
+
+-- Drag window by header
+local dragging, dragInput, dragStart, startPos
+top.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+top.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input == dragInput then
+        local delta = input.Position - dragStart
+        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+close.MouseButton1Click:Connect(function()
+    main.Visible = false
+end)
+
+local open = Instance.new("TextButton")
+open.Size = UDim2.fromOffset(105, 38)
+open.Position = UDim2.new(0, 14, 0.5, 0)
+open.BackgroundColor3 = Color3.fromRGB(25, 80, 105)
+open.Text = "AngelHub"
+open.TextColor3 = Color3.fromRGB(225, 250, 255)
+open.Font = Enum.Font.GothamBold
+open.TextSize = 14
+open.Parent = gui
+round(open, 8)
+outline(open, Color3.fromRGB(75, 220, 255), 1)
+open.MouseButton1Click:Connect(function()
+    main.Visible = not main.Visible
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        main.Visible = not main.Visible
+    elseif input.KeyCode == config.keybind then
+        config.enabled = not config.enabled
+        local button = controls.enabled
+        if button then
+            button.Text = config.enabled and "ON" or "OFF"
+            button.BackgroundColor3 = config.enabled and Color3.fromRGB(45, 160, 190) or Color3.fromRGB(37, 48, 62)
+        end
+    end
+end)
+
+-- FOV ring, centered on screen
+local fov = Instance.new("Frame")
+fov.Name = "FOVRing"
+fov.AnchorPoint = Vector2.new(0.5, 0.5)
+fov.Position = UDim2.fromScale(0.5, 0.5)
+fov.Size = UDim2.fromOffset(config.fovRadius * 2, config.fovRadius * 2)
+fov.BackgroundTransparency = 1
+fov.Visible = false
+fov.Parent = gui
+local fovCorner = Instance.new("UICorner")
+fovCorner.CornerRadius = UDim.new(1, 0)
+fovCorner.Parent = fov
+local fovStroke = Instance.new("UIStroke")
+fovStroke.Color = Color3.fromRGB(75, 220, 255)
+fovStroke.Thickness = 1.5
+fovStroke.Transparency = 0.15
+fovStroke.Parent = fov
+
+local function sameTeam(other)
+    return localPlayer.Team ~= nil and other.Team == localPlayer.Team
+end
+
+local function getPart(character)
+    if not character then return nil end
+    return character:FindFirstChild(config.targetPart) or character:FindFirstChild("HumanoidRootPart")
+end
+
+local espObjects = {}
+local function removeESP(other)
+    if espObjects[other] then
+        espObjects[other]:Destroy()
+        espObjects[other] = nil
+    end
+end
+
+local function updateESP(other)
+    if other == localPlayer or not config.esp then
+        removeESP(other)
+        return
+    end
+    local character = other.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    local hum = character and character:FindFirstChildOfClass("Humanoid")
+    if not root or not hum or hum.Health <= 0 then
+        removeESP(other)
+        return
+    end
+    if not espObjects[other] then
+        local bb = Instance.new("BillboardGui")
+        bb.Name = "AngelHubESP"
+        bb.Adornee = root
+        bb.Size = UDim2.fromOffset(180, 40)
+        bb.StudsOffset = Vector3.new(0, 3, 0)
+        bb.AlwaysOnTop = true
+        local text = Instance.new("TextLabel")
+        text.BackgroundTransparency = 1
+        text.Size = UDim2.fromScale(1, 1)
+        text.Font = Enum.Font.GothamBold
+        text.TextSize = 13
+        text.TextColor3 = Color3.fromRGB(100, 225, 255)
+        text.TextStrokeTransparency = 0.25
+        text.Parent = bb
+        bb.Parent = gui
+        espObjects[other] = bb
+    end
+    local bb = espObjects[other]
+    bb.Adornee = root
+    local labelObj = bb:FindFirstChildOfClass("TextLabel")
+    local myRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local dist = myRoot and math.floor((root.Position - myRoot.Position).Magnitude) or 0
+    if labelObj then labelObj.Text = other.DisplayName .. " [" .. dist .. " studs]" end
+end
+
+local function findTarget()
+    local best, bestDist = nil, math.huge
+    local center = camera.ViewportSize / 2
+    for _, other in ipairs(Players:GetPlayers()) do
+        if other ~= localPlayer and (not config.teamCheck or not sameTeam(other)) then
+            local character = other.Character
+            local hum = character and character:FindFirstChildOfClass("Humanoid")
+            local part = getPart(character)
+            if hum and hum.Health > 0 and part then
+                local worldDist = (part.Position - camera.CFrame.Position).Magnitude
+                local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+                local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                if onScreen and worldDist <= config.maxDistance and screenDist <= config.fovRadius and screenDist < bestDist then
+                    best, bestDist = other, screenDist
+                end
+            end
+        end
+    end
+    return best
+end
+
+RunService.RenderStepped:Connect(function(dt)
+    camera = workspace.CurrentCamera
+    fov.Visible = config.drawFOV
+    fov.Size = UDim2.fromOffset(config.fovRadius * 2, config.fovRadius * 2)
+
+    for _, other in ipairs(Players:GetPlayers()) do
+        updateESP(other)
+    end
+    for other in pairs(espObjects) do
+        if not other.Parent then removeESP(other) end
+    end
+
+    if not config.enabled then
+        selectedTarget = nil
+        return
+    end
+
+    selectedTarget = findTarget()
+    if selectedTarget then
+        local part = getPart(selectedTarget.Character)
+        if part then
+            local aimPoint = part.Position
+            local goal = CFrame.lookAt(camera.CFrame.Position, aimPoint)
+            -- Smoothness 0 is responsive; 100 is slower.
+            local responsiveness = 1 - (config.smoothness / 100)
+            local alpha = math.clamp(responsiveness * dt * 18, 0.01, 1)
+            camera.CFrame = camera.CFrame:Lerp(goal, alpha)
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(removeESP)
+
+print("AngelHub V1.0 loaded for your Roblox Studio game.")
